@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#eee6f6">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Jijo's Day Routine</title>
+<style>
+:root{--bg:#faf7fc;--card:#fff;--ink:#40364c;--muted:#80758c;--accent:#9c83b8;--soft:#eee6f6;--line:#eee8f2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:24px 18px 18px;background:linear-gradient(135deg,#eee6f6,#f8edf1);border-radius:0 0 26px 26px}
+h1{font-size:25px;margin:0 0 5px}p{margin:5px 0;color:var(--muted)}main{max-width:720px;margin:auto;padding:14px}
+nav{display:flex;gap:7px;overflow:auto;padding:12px 0}nav button{white-space:nowrap;border:0;border-radius:20px;padding:10px 14px;background:#eee8f2;color:var(--ink)}nav button.active{background:var(--accent);color:white}
+.panel,.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;margin:10px 0;box-shadow:0 3px 14px #5c45600a}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat strong{display:block;font-size:22px}.stat span{font-size:12px;color:var(--muted)}
+h2{font-size:18px;margin:4px 0 12px}.row{display:flex;gap:8px;align-items:center;margin:8px 0}.row input{flex:1;min-width:0}
+input,select,textarea{width:100%;border:1px solid #e5dce9;border-radius:11px;padding:11px;background:white;color:var(--ink);font:inherit}
+button.primary{border:0;border-radius:11px;background:var(--accent);color:white;padding:11px 15px;font-weight:600}
+button.small{border:0;background:#f4eef7;color:#675579;border-radius:9px;padding:7px 10px}
+.item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}.item label{flex:1}.item.done label{text-decoration:line-through;color:#a49aaa}
+.meta{font-size:12px;color:var(--muted)}.empty{color:var(--muted);font-size:14px;padding:10px 0}
+label.field{display:block;font-size:13px;color:var(--muted);margin:9px 0 5px}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>🌷 Jijo's Day Routine</h1><p>A little plan for a calmer day.</p></header>
+<main>
+<section class="stats">
+ <div class="stat"><strong id="routineCount">0/6</strong><span>Routine done</span></div>
+ <div class="stat"><strong id="taskCount">0</strong><span>Open tasks</span></div>
+ <div class="stat"><strong id="shopCount">0</strong><span>Shopping items</span></div>
+</section>
+<nav id="nav">
+ <button class="active" data-tab="today">Today</button><button data-tab="routine">Routine</button><button data-tab="tasks">Tasks</button><button data-tab="shopping">Shopping</button><button data-tab="payments">Payments</button><button data-tab="reminders">Reminders</button>
+</nav>
+<section id="today" class="tab panel">
+ <h2>☀️ Your day at a glance</h2><p id="todayDate"></p>
+ <p>Use the tabs above to manage your routine, tasks, shopping and payment dates.</p>
+ <div id="todayTasks"></div>
+ <div id="todayPayments"></div>
+</section>
+<section id="routine" class="tab panel hidden"><h2>🌸 Daily routine</h2><p>Tick items as you complete them. They reset each new day.</p><div id="routineList"></div></section>
+<section id="tasks" class="tab panel hidden"><h2>✓ My tasks</h2>
+ <form id="taskForm" class="row"><input id="taskInput" placeholder="Add a task..." required><button class="primary">Add</button></form><div id="taskList"></div></section>
+<section id="shopping" class="tab panel hidden"><h2>🛍️ Shopping list</h2>
+ <form id="shopForm" class="row"><input id="shopInput" placeholder="What do you need?" required><button class="primary">Add</button></form><div id="shopList"></div></section>
+<section id="payments" class="tab panel hidden"><h2>💳 Upcoming direct debits</h2><p>Record payment dates manually. This app does not connect to your bank or make payments.</p>
+ <form id="paymentForm"><label class="field">Payment name</label><input id="payName" placeholder="e.g. Phone bill" required><label class="field">Amount (€)</label><input id="payAmount" type="number" min="0" step="0.01" placeholder="e.g. 25.99" required><label class="field">Due date</label><input id="payDate" type="date" required><label class="field">Remind me</label><select id="payLead"><option value="0">On the day</option><option value="1" selected>1 day before</option><option value="3">3 days before</option><option value="7">7 days before</option></select><p><button class="primary">Save payment</button></p></form><div id="paymentList"></div></section>
+<section id="reminders" class="tab panel hidden"><h2>🔔 Reminders</h2><p>Save a reminder note and choose a date and time. Browser notification support depends on how this page is hosted and opened.</p>
+ <form id="reminderForm"><label class="field">Reminder</label><input id="remText" placeholder="What should you remember?" required><label class="field">Date and time</label><input id="remWhen" type="datetime-local" required><p><button class="primary">Save reminder</button></p></form><div id="reminderList"></div>
+ <button id="enableNotifications" class="small">Enable browser notifications</button><p class="meta" id="notifyStatus">Notifications may require a secure website address (HTTPS).</p></section>
+<footer>Jijo's Day Routine · Your information is stored in this browser on this device.</footer>
+</main>
+<script>
+const KEY='jijo-day-routine-v1';
+const defaults={day:new Date().toDateString(),routine:[false,false,false,false,false,false],tasks:[],shopping:[],payments:[],reminders:[]};
+let data;try{data=JSON.parse(localStorage.getItem(KEY))||defaults}catch(e){data=defaults}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const routineNames=['Wake up','Make the bed','Morning wash and get ready','Breakfast','Afternoon routine','Evening wind-down'];
+function itemRow(text,done,onToggle,onDelete,meta=''){return `<div class="item ${done?'done':''}"><input type="checkbox" ${done?'checked':''} data-toggle="${onToggle}" style="width:20px"><label>${esc(text)}<div class="meta">${meta}</div></label><button class="small" data-delete="${onDelete}">Delete</button></div>`}
+function render(){
+ if(data.day!==new Date().toDateString()){data.day=new Date().toDateString();data.routine=defaults.routine.slice();localStorage.setItem(KEY,JSON.stringify(data))}
+ document.getElementById('routineCount').textContent=data.routine.filter(Boolean).length+'/6';
+ document.getElementById('taskCount').textContent=data.tasks.filter(x=>!x.done).length;
+ document.getElementById('shopCount').textContent=data.shopping.filter(x=>!x.done).length;
+ document.getElementById('todayDate').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+ document.getElementById('routineList').innerHTML=routineNames.map((n,i)=>itemRow(n,data.routine[i],'routine:'+i,'none')).join('');
+ document.getElementById('taskList').innerHTML=data.tasks.length?data.tasks.map((x,i)=>itemRow(x.text,x.done,'task:'+i,'task:'+i)).join(''):'<div class="empty">No tasks yet. Add one above.</div>';
+ document.getElementById('shopList').innerHTML=data.shopping.length?data.shopping.map((x,i)=>itemRow(x.text,x.done,'shop:'+i,'shop:'+i)).join(''):'<div class="empty">Your shopping list is empty.</div>';
+ document.getElementById('paymentList').innerHTML=data.payments.length?data.payments.map((x,i)=>`<div class="item"><label><b>${esc(x.name)}</b><div>€${Number(x.amount).toFixed(2)} · ${esc(x.date)}</div><div class="meta">Reminder: ${x.lead===0?'on the day':x.lead+' days before'}</div></label><button class="small" data-delete="payment:${i}">Delete</button></div>`).join(''):'<div class="empty">No payments recorded.</div>';
+ document.getElementById('reminderList').innerHTML=data.reminders.length?data.reminders.map((x,i)=>`<div class="item"><label><b>${esc(x.text)}</b><div class="meta">${esc(new Date(x.when).toLocaleString())}</div></label><button class="small" data-delete="reminder:${i}">Delete</button></div>`).join(''):'<div class="empty">No reminders saved.</div>';
+ document.getElementById('todayTasks').innerHTML='<h2>Tasks</h2>'+ (data.tasks.filter(x=>!x.done).slice(0,4).map(x=>'<div class="item">'+esc(x.text)+'</div>').join('')||'<p class="empty">No outstanding tasks.</p>');
+ document.getElementById('todayPayments').innerHTML='<h2>Upcoming payments</h2>'+ (data.payments.slice().sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3).map(x=>'<div class="item"><label>'+esc(x.name)+'<div class="meta">'+esc(x.date)+' · €'+Number(x.amount).toFixed(2)+'</div></label></div>').join('')||'<p class="empty">No payments recorded.</p>');
+}
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.tab))}));
+document.getElementById('taskForm').addEventListener('submit',e=>{e.preventDefault();data.tasks.push({text:taskInput.value.trim(),done:false});taskInput.value='';save()});
+document.getElementById('shopForm').addEventListener('submit',e=>{e.preventDefault();data.shopping.push({text:shopInput.value.trim(),done:false});shopInput.value='';save()});
+document.getElementById('paymentForm').addEventListener('submit',e=>{e.preventDefault();data.payments.push({name:payName.value.trim(),amount:payAmount.value,date:payDate.value,lead:Number(payLead.value)});e.target.reset();save()});
+document.getElementById('reminderForm').addEventListener('submit',e=>{e.preventDefault();data.reminders.push({text:remText.value.trim(),when:remWhen.value,notified:false});e.target.reset();save()});
+document.addEventListener('change',e=>{if(!e.target.matches('[data-toggle]'))return;let [type,index]=e.target.dataset.toggle.split(':');index=Number(index);if(type==='routine')data.routine[index]=e.target.checked;if(type==='task')data.tasks[index].done=e.target.checked;if(type==='shop')data.shopping[index].done=e.target.checked;save()});
+document.addEventListener('click',e=>{let key=e.target.dataset.delete;if(!key||key==='none')return;let [type,index]=key.split(':');index=Number(index);if(type==='task')data.tasks.splice(index,1);if(type==='shop')data.shopping.splice(index,1);if(type==='payment')data.payments.splice(index,1);if(type==='reminder')data.reminders.splice(index,1);save()});
+document.getElementById('enableNotifications').addEventListener('click',async()=>{let s=document.getElementById('notifyStatus');if(!('Notification'in window)){s.textContent='This browser does not support notifications here.';return}try{let p=await Notification.requestPermission();s.textContent=p==='granted'?'Notifications permission granted. Keep in mind browser reminders need the app/website support to run in the background.':'Notifications were not enabled.'}catch(e){s.textContent='Notifications need this app to be opened from a secure HTTPS website.'}});
+render();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body></html>
