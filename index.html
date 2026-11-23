@@ -57,8 +57,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
 </main>
 <script>
 const KEY='jijo-day-routine-v1';
-const defaults={day:new Date().toDateString(),routine:[false,false,false,false,false,false],tasks:[],shopping:[],payments:[],reminders:[]};
+const defaults={day:new Date().toDateString(),routine:[false,false,false,false,false,false],tasks:[],shopping:[],payments:[],reminders:[],prayers:[]};
 let data;try{data=JSON.parse(localStorage.getItem(KEY))||defaults}catch(e){data=defaults}
+// Add the new list safely for people who already used an earlier version.
+data.prayers=data.prayers||[];
 function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const routineNames=['Wake up','Make the bed','Morning wash and get ready','Breakfast','Afternoon routine','Evening wind-down'];
@@ -82,8 +84,10 @@ document.getElementById('taskForm').addEventListener('submit',e=>{e.preventDefau
 document.getElementById('shopForm').addEventListener('submit',e=>{e.preventDefault();data.shopping.push({text:shopInput.value.trim(),done:false});shopInput.value='';save()});
 document.getElementById('paymentForm').addEventListener('submit',e=>{e.preventDefault();data.payments.push({name:payName.value.trim(),amount:payAmount.value,date:payDate.value,lead:Number(payLead.value)});e.target.reset();save()});
 document.getElementById('reminderForm').addEventListener('submit',e=>{e.preventDefault();data.reminders.push({text:remText.value.trim(),when:remWhen.value,notified:false});e.target.reset();save()});
+document.getElementById('prayerForm').addEventListener('submit',e=>{e.preventDefault();const text=document.getElementById('prayerInput').value.trim();if(!text)return;data.prayers.push({text,createdAt:new Date().toISOString()});e.target.reset();save()});
 document.addEventListener('change',e=>{if(!e.target.matches('[data-toggle]'))return;let [type,index]=e.target.dataset.toggle.split(':');index=Number(index);if(type==='routine')data.routine[index]=e.target.checked;if(type==='task')data.tasks[index].done=e.target.checked;if(type==='shop')data.shopping[index].done=e.target.checked;save()});
-document.addEventListener('click',e=>{let key=e.target.dataset.delete;if(!key||key==='none')return;let [type,index]=key.split(':');index=Number(index);if(type==='task')data.tasks.splice(index,1);if(type==='shop')data.shopping.splice(index,1);if(type==='payment')data.payments.splice(index,1);if(type==='reminder')data.reminders.splice(index,1);save()});
+document.addEventListener('click',e=>{let key=e.target.dataset.delete;if(!key||key==='none')return;let [type,index]=key.split(':');index=Number(index);if(type==='task')data.tasks.splice(index,1);if(type==='shop')data.shopping.splice(index,1);if(type==='payment')data.payments.splice(index,1);if(type==='reminder')data.reminders.splice(index,1);if(type==='prayer')data.prayers.splice(index,1);save()});
+document.addEventListener('click',e=>{const i=e.target.dataset.editPrayer;if(i===undefined)return;const current=data.prayers[Number(i)];if(!current)return;const updated=prompt('Edit prayer / പ്രാർത്ഥന തിരുത്തുക:',current.text);if(updated===null)return;if(!updated.trim()){alert('Prayer cannot be empty.');return}current.text=updated.trim();save()});
 document.getElementById('enableNotifications').addEventListener('click',async()=>{let s=document.getElementById('notifyStatus');if(!('Notification'in window)){s.textContent='This browser does not support notifications here.';return}try{let p=await Notification.requestPermission();s.textContent=p==='granted'?'Notifications permission granted. Keep in mind browser reminders need the app/website support to run in the background.':'Notifications were not enabled.'}catch(e){s.textContent='Notifications need this app to be opened from a secure HTTPS website.'}});
 render();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
