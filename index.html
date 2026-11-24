@@ -24,6 +24,8 @@ button.small{border:0;background:#f4eef7;color:#675579;border-radius:9px;padding
 label.field{display:block;font-size:13px;color:var(--muted);margin:9px 0 5px}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
 .hidden{display:none!important}
+.prayer-text{white-space:pre-wrap;overflow-wrap:anywhere}
+.prayer-actions{display:flex;gap:6px}
 </style>
 </head>
 <body>
@@ -35,7 +37,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
  <div class="stat"><strong id="shopCount">0</strong><span>Shopping items</span></div>
 </section>
 <nav id="nav">
- <button class="active" data-tab="today">Today</button><button data-tab="routine">Routine</button><button data-tab="tasks">Tasks</button><button data-tab="shopping">Shopping</button><button data-tab="payments">Payments</button><button data-tab="reminders">Reminders</button>
+ <button class="active" data-tab="today">Today</button><button data-tab="routine">Routine</button><button data-tab="tasks">Tasks</button><button data-tab="shopping">Shopping</button><button data-tab="payments">Payments</button><button data-tab="reminders">Reminders</button><button data-tab="prayers">🙏 Prayer List</button>
 </nav>
 <section id="today" class="tab panel">
  <h2>☀️ Your day at a glance</h2><p id="todayDate"></p>
@@ -53,14 +55,24 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
 <section id="reminders" class="tab panel hidden"><h2>🔔 Reminders</h2><p>Save a reminder note and choose a date and time. Browser notification support depends on how this page is hosted and opened.</p>
  <form id="reminderForm"><label class="field">Reminder</label><input id="remText" placeholder="What should you remember?" required><label class="field">Date and time</label><input id="remWhen" type="datetime-local" required><p><button class="primary">Save reminder</button></p></form><div id="reminderList"></div>
  <button id="enableNotifications" class="small">Enable browser notifications</button><p class="meta" id="notifyStatus">Notifications may require a secure website address (HTTPS).</p></section>
+<section id="prayers" class="tab panel hidden">
+ <h2>🙏 My Prayer List</h2>
+ <p>Add each prayer in your own words. You can write in Malayalam or English.</p>
+ <form id="prayerForm">
+  <label class="field" for="prayerInput">Your prayer / നിങ്ങളുടെ പ്രാർത്ഥന</label>
+  <textarea id="prayerInput" rows="4" placeholder="ഇവിടെ നിങ്ങളുടെ പ്രാർത്ഥന എഴുതുക... / Write your prayer here..." required></textarea>
+  <p><button class="primary" type="submit">Add prayer / ചേർക്കുക</button></p>
+ </form>
+ <div id="prayerList"></div>
+</section>
 <footer>Jijo's Day Routine · Your information is stored in this browser on this device.</footer>
 </main>
 <script>
 const KEY='jijo-day-routine-v1';
 const defaults={day:new Date().toDateString(),routine:[false,false,false,false,false,false],tasks:[],shopping:[],payments:[],reminders:[],prayers:[]};
-let data;try{data=JSON.parse(localStorage.getItem(KEY))||defaults}catch(e){data=defaults}
-// Add the new list safely for people who already used an earlier version.
-data.prayers=data.prayers||[];
+let data;
+try{data=JSON.parse(localStorage.getItem(KEY))||{...defaults}}catch(e){data={...defaults}}
+for(const k of ['routine','tasks','shopping','payments','reminders','prayers'])if(!Array.isArray(data[k]))data[k]=defaults[k].slice();
 function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const routineNames=['Wake up','Make the bed','Morning wash and get ready','Breakfast','Afternoon routine','Evening wind-down'];
@@ -72,20 +84,21 @@ function render(){
  document.getElementById('shopCount').textContent=data.shopping.filter(x=>!x.done).length;
  document.getElementById('todayDate').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
  document.getElementById('routineList').innerHTML=routineNames.map((n,i)=>itemRow(n,data.routine[i],'routine:'+i,'none')).join('');
- document.getElementById('taskList').innerHTML=data.tasks.length?data.tasks.map((x,i)=>itemRow(x.text,x.done,'task:'+i,'task:'+i)).join(''):'<div class="empty">No tasks yet. Add one above.</div>';
- document.getElementById('shopList').innerHTML=data.shopping.length?data.shopping.map((x,i)=>itemRow(x.text,x.done,'shop:'+i,'shop:'+i)).join(''):'<div class="empty">Your shopping list is empty.</div>';
+ document.getElementById('taskList').innerHTML=data.tasks.length?data.tasks.map((x,i)=>itemRow(x.text,x.done,'task:'+i,'task:'+i)).join():'<div class="empty">No tasks yet. Add one above.</div>';
+ document.getElementById('shopList').innerHTML=data.shopping.length?data.shopping.map((x,i)=>itemRow(x.text,x.done,'shop:'+i,'shop:'+i)).join():'<div class="empty">Your shopping list is empty.</div>';
  document.getElementById('paymentList').innerHTML=data.payments.length?data.payments.map((x,i)=>`<div class="item"><label><b>${esc(x.name)}</b><div>€${Number(x.amount).toFixed(2)} · ${esc(x.date)}</div><div class="meta">Reminder: ${x.lead===0?'on the day':x.lead+' days before'}</div></label><button class="small" data-delete="payment:${i}">Delete</button></div>`).join(''):'<div class="empty">No payments recorded.</div>';
  document.getElementById('reminderList').innerHTML=data.reminders.length?data.reminders.map((x,i)=>`<div class="item"><label><b>${esc(x.text)}</b><div class="meta">${esc(new Date(x.when).toLocaleString())}</div></label><button class="small" data-delete="reminder:${i}">Delete</button></div>`).join(''):'<div class="empty">No reminders saved.</div>';
+ document.getElementById('prayerList').innerHTML=data.prayers.length?data.prayers.map((x,i)=>`<div class="item"><label class="prayer-text">${esc(x.text)}</label><div class="prayer-actions"><button class="small" data-edit-prayer="${i}" type="button">Edit</button><button class="small" data-delete="prayer:${i}" type="button">Delete</button></div></div>`).join(''):'<div class="empty">No prayers yet. Add your first prayer above. / ഇതുവരെ പ്രാർത്ഥനകൾ ചേർത്തിട്ടില്ല.</div>';
  document.getElementById('todayTasks').innerHTML='<h2>Tasks</h2>'+ (data.tasks.filter(x=>!x.done).slice(0,4).map(x=>'<div class="item">'+esc(x.text)+'</div>').join('')||'<p class="empty">No outstanding tasks.</p>');
  document.getElementById('todayPayments').innerHTML='<h2>Upcoming payments</h2>'+ (data.payments.slice().sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3).map(x=>'<div class="item"><label>'+esc(x.name)+'<div class="meta">'+esc(x.date)+' · €'+Number(x.amount).toFixed(2)+'</div></label></div>').join('')||'<p class="empty">No payments recorded.</p>');
 }
 document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.tab))}));
-document.getElementById('taskForm').addEventListener('submit',e=>{e.preventDefault();data.tasks.push({text:taskInput.value.trim(),done:false});taskInput.value='';save()});
-document.getElementById('shopForm').addEventListener('submit',e=>{e.preventDefault();data.shopping.push({text:shopInput.value.trim(),done:false});shopInput.value='';save()});
-document.getElementById('paymentForm').addEventListener('submit',e=>{e.preventDefault();data.payments.push({name:payName.value.trim(),amount:payAmount.value,date:payDate.value,lead:Number(payLead.value)});e.target.reset();save()});
-document.getElementById('reminderForm').addEventListener('submit',e=>{e.preventDefault();data.reminders.push({text:remText.value.trim(),when:remWhen.value,notified:false});e.target.reset();save()});
-document.getElementById('prayerForm').addEventListener('submit',e=>{e.preventDefault();const text=document.getElementById('prayerInput').value.trim();if(!text)return;data.prayers.push({text,createdAt:new Date().toISOString()});e.target.reset();save()});
-document.addEventListener('change',e=>{if(!e.target.matches('[data-toggle]'))return;let [type,index]=e.target.dataset.toggle.split(':');index=Number(index);if(type==='routine')data.routine[index]=e.target.checked;if(type==='task')data.tasks[index].done=e.target.checked;if(type==='shop')data.shopping[index].done=e.target.checked;save()});
+document.getElementById('taskForm').addEventListener('submit',e=>{e.preventDefault();data.tasks.push({text:document.getElementById('taskInput').value.trim(),done:false});e.target.reset();save()});
+document.getElementById('shopForm').addEventListener('submit',e=>{e.preventDefault();data.shopping.push({text:document.getElementById('shopInput').value.trim(),done:false});e.target.reset();save()});
+document.getElementById('paymentForm').addEventListener('submit',e=>{e.preventDefault();data.payments.push({name:document.getElementById('payName').value.trim(),amount:document.getElementById('payAmount').value,date:document.getElementById('payDate').value,lead:Number(document.getElementById('payLead').value)});e.target.reset();save()});
+document.getElementById('reminderForm').addEventListener('submit',e=>{e.preventDefault();data.reminders.push({text:document.getElementById('remText').value.trim(),when:document.getElementById('remWhen').value,notified:false});e.target.reset();save()});
+document.getElementById('prayerForm').addEventListener('submit',e=>{e.preventDefault();const input=document.getElementById('prayerInput');const text=input.value.trim();if(!text)return;data.prayers.push({text,createdAt:new Date().toISOString()});e.target.reset();save()});
+document.addEventListener('change',e=>{if(!e.target.matches('[data-toggle]'))return;let [type,index]=e.target.dataset.toggle.split(':');index=Number(index);if(type==='routine')data.routine[index]=e.target.checked;if(type==='task'&&data.tasks[index])data.tasks[index].done=e.target.checked;if(type==='shop'&&data.shopping[index])data.shopping[index].done=e.target.checked;save()});
 document.addEventListener('click',e=>{let key=e.target.dataset.delete;if(!key||key==='none')return;let [type,index]=key.split(':');index=Number(index);if(type==='task')data.tasks.splice(index,1);if(type==='shop')data.shopping.splice(index,1);if(type==='payment')data.payments.splice(index,1);if(type==='reminder')data.reminders.splice(index,1);if(type==='prayer')data.prayers.splice(index,1);save()});
 document.addEventListener('click',e=>{const i=e.target.dataset.editPrayer;if(i===undefined)return;const current=data.prayers[Number(i)];if(!current)return;const updated=prompt('Edit prayer / പ്രാർത്ഥന തിരുത്തുക:',current.text);if(updated===null)return;if(!updated.trim()){alert('Prayer cannot be empty.');return}current.text=updated.trim();save()});
 document.getElementById('enableNotifications').addEventListener('click',async()=>{let s=document.getElementById('notifyStatus');if(!('Notification'in window)){s.textContent='This browser does not support notifications here.';return}try{let p=await Notification.requestPermission();s.textContent=p==='granted'?'Notifications permission granted. Keep in mind browser reminders need the app/website support to run in the background.':'Notifications were not enabled.'}catch(e){s.textContent='Notifications need this app to be opened from a secure HTTPS website.'}});
